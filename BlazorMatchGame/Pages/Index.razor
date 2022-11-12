@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using System.Timers
 
 <PageTitle>Index</PageTitle>
 
@@ -26,9 +27,18 @@
 
            </div>
         }
-
     </div>
-   
+    @*Razor markup uses @matchesFound to make page display
+      the number of matches found under the grid of buttons
+    *@
+    <div class="row">
+    <h2> Matches found: @matchesFound</h2>
+    </div>
+
+    @*Display the time*@
+    <div class="row">
+        <h2>Time: @timeDisplay</h2>
+    </div>
 </div>
 @code {
     List<string> animalEmoji = new List<string>()
@@ -47,8 +57,17 @@
 
     List<string> shuffledAnimals = new List<string>();
 
+    // keeps track of matches found
+    int matchesFound = 0;
+    Timer timer;
+    int tenthOfSecondsElapsed = 0;
+    string timeDisplay;
+
     protected override void OnInitialized()
     {
+        timer = new Timer(100);
+        timer.Elapsed += Timer_Tick;
+
         SetUpGame();
     }
     private void SetUpGame()
@@ -58,17 +77,25 @@
         shuffledAnimals = animalEmoji
             .OrderBy(item => random.Next())
             .ToList();
+
+        //Reset the the number of matches back to zero
+        matchesFound = 0;
+
+        //Reset the timer when you setup the game
+        tenthOfSecondsElapsed = 0;
     }
     string lastAnimalFound = string.Empty;
     string lastDescription = string.Empty;
 
     private void ButtonClick(string animal, string animalDescription)
     {
-        if (lastAnimalFound ==string.Empty)
+        if (lastAnimalFound == string.Empty)
         {
             //First selection of the pair. Remeber it.
             lastAnimalFound = animal;
             lastDescription = animalDescription;
+
+            timer.Start();
         }
         else if ((lastAnimalFound == animal) && (animalDescription != lastDescription))
         {
@@ -79,12 +106,33 @@
             shuffledAnimals = shuffledAnimals
             .Select(a => a.Replace(animal, string.Empty))
             .ToList();
+
+            // Every time a player finds a match this block adds 1 to the matchfound
+            // If all 8 pair are found, then reset the game
+            matchesFound++;
+            if(matchesFound ==8)
+            {
+                timer.Stop();
+                timeDisplay += " - Play Again";
+                SetUpGame();
+            }
+            else
+            {
+                //  User selected a pair that don't match.
+                //  Reset selection
+                lastAnimalFound = string.Empty;
+            }
         }
-        else
+    }
+     // Tick event handlers: method execures every time the timer ticks
+    private void Timer_Tick(Object source, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
         {
-            //  User selected a pair that don't match.
-            //  Reset selection
-            lastAnimalFound = string.Empty;
-        }
+            tenthOfSecondsElapsed++;
+            timeDisplay = (tenthOfSecondsElapsed / 10F)
+                .ToString("0.0s");
+            StateHasChanged();
+        });
     }
 }
